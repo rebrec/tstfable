@@ -49,6 +49,9 @@ export class EditorScene extends Phaser.Scene {
   private paletteMarker!: Phaser.GameObjects.Rectangle;
   private dimsText!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private isTouch = false;
+  private panX = 0;
+  private panY = 0;
 
   constructor() {
     super("Editor");
@@ -70,6 +73,9 @@ export class EditorScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.isTouch = this.game.device.input.touch;
+    this.panX = 0;
+    this.panY = 0;
     this.input.mouse?.disableContextMenu();
     this.cameras.main.setBackgroundColor("#16203a");
 
@@ -105,6 +111,10 @@ export class EditorScene extends Phaser.Scene {
         cam.scrollY += dy * 0.7;
       }
     );
+
+    if (this.isTouch) {
+      this.buildPanControls();
+    }
   }
 
   update(): void {
@@ -114,6 +124,57 @@ export class EditorScene extends Phaser.Scene {
     if (this.cursors.right.isDown) cam.scrollX += speed;
     if (this.cursors.up.isDown) cam.scrollY -= speed;
     if (this.cursors.down.isDown) cam.scrollY += speed;
+    cam.scrollX += this.panX * speed;
+    cam.scrollY += this.panY * speed;
+  }
+
+  /** Croix directionnelle tactile pour déplacer la vue de l'éditeur. */
+  private buildPanControls(): void {
+    const { width, height } = this.scale;
+    const cx = width - 86;
+    const cy = height - 70;
+    const r = 22;
+    const gap = 46;
+
+    const mk = (dx: number, dy: number, label: string, ox: number, oy: number) => {
+      const circle = this.add
+        .circle(cx + ox, cy + oy, r, 0xffffff, 0.16)
+        .setScrollFactor(0)
+        .setDepth(940)
+        .setStrokeStyle(2, 0xffffff, 0.45);
+      this.add
+        .text(cx + ox, cy + oy, label, {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "22px",
+          color: "#ffffff",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(941);
+      const zone = this.add
+        .zone(cx + ox, cy + oy, r * 2, r * 2)
+        .setScrollFactor(0)
+        .setDepth(942)
+        .setInteractive();
+      const start = () => {
+        this.panX = dx;
+        this.panY = dy;
+        circle.setFillStyle(0xffffff, 0.38);
+      };
+      const stop = () => {
+        if (this.panX === dx) this.panX = 0;
+        if (this.panY === dy) this.panY = 0;
+        circle.setFillStyle(0xffffff, 0.16);
+      };
+      zone.on("pointerdown", start);
+      zone.on("pointerup", stop);
+      zone.on("pointerout", stop);
+    };
+
+    mk(-1, 0, "◀", -gap, 0);
+    mk(1, 0, "▶", gap, 0);
+    mk(0, -1, "▲", 0, -gap);
+    mk(0, 1, "▼", 0, gap);
   }
 
   // --- grille ---------------------------------------------------------
@@ -373,25 +434,27 @@ export class EditorScene extends Phaser.Scene {
     let x = width - 10;
     for (const [label, fn, color] of [...actions].reverse()) {
       const btn = makeButton(this, 0, 70, label, fn, {
-        fontSize: 13,
+        fontSize: this.isTouch ? 16 : 13,
         color,
       })
         .setScrollFactor(0)
         .setDepth(902);
       btn.setX(x - btn.width / 2);
-      x -= btn.width + 8;
+      x -= btn.width + (this.isTouch ? 10 : 8);
     }
 
-    // raccourcis d'aide
-    this.add
-      .text(34, 70, "Clic G : placer  •  Clic D : effacer  •  Flèches : vue", {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "12px",
-        color: "#9fb3dc",
-      })
-      .setOrigin(0, 0.5)
-      .setScrollFactor(0)
-      .setDepth(902);
+    // raccourcis d'aide (souris uniquement ; sur tactile, croix de déplacement)
+    if (!this.isTouch) {
+      this.add
+        .text(34, 70, "Clic G : placer  •  Clic D : effacer  •  Flèches : vue", {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "12px",
+          color: "#9fb3dc",
+        })
+        .setOrigin(0, 0.5)
+        .setScrollFactor(0)
+        .setDepth(902);
+    }
   }
 
   // --- actions ----------------------------------------------------------
