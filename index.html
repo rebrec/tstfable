@@ -2,7 +2,12 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Sky Dash — jeu de plateforme</title>
     <style>
       html,
@@ -12,6 +17,12 @@
         height: 100%;
         background: #0b1021;
         overflow: hidden;
+        /* évite le défilement / zoom par geste tactile pendant le jeu */
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
       }
       #app {
         display: flex;
@@ -22,11 +33,61 @@
       canvas {
         border-radius: 6px;
         box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+        touch-action: none;
+      }
+      /* invite à passer en paysage sur mobile en mode portrait */
+      #rotate {
+        display: none;
+      }
+      @media (orientation: portrait) and (pointer: coarse) {
+        #rotate {
+          display: flex;
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 24px;
+          background: #0b1021;
+          color: #e8eefc;
+          font-family: system-ui, sans-serif;
+        }
+        #rotate .icon {
+          font-size: 64px;
+          margin-bottom: 16px;
+          animation: rotate-hint 1.6s ease-in-out infinite;
+        }
+        #rotate .title {
+          font-size: 22px;
+          font-weight: bold;
+        }
+        #rotate .sub {
+          font-size: 15px;
+          color: #c9d6f2;
+          margin-top: 8px;
+        }
+      }
+      @keyframes rotate-hint {
+        0%,
+        60%,
+        100% {
+          transform: rotate(0deg);
+        }
+        30% {
+          transform: rotate(-90deg);
+        }
       }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="rotate">
+      <div class="icon">📱</div>
+      <div class="title">Tournez votre appareil</div>
+      <div class="sub">Sky Dash se joue en mode paysage</div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

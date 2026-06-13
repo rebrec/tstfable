@@ -46,6 +46,10 @@ export class GameScene extends Phaser.Scene {
   private dead = false;
   private won = false;
 
+  private touchLeft = false;
+  private touchRight = false;
+  private touchJumpHeld = false;
+
   private dustEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private sparkEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private burstEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -65,6 +69,9 @@ export class GameScene extends Phaser.Scene {
     this.lastJumpPressed = -99999;
     this.hazardZones = [];
     this.flagZones = [];
+    this.touchLeft = false;
+    this.touchRight = false;
+    this.touchJumpHeld = false;
   }
 
   create(): void {
@@ -172,6 +179,11 @@ export class GameScene extends Phaser.Scene {
       });
     });
     kb.on("keydown-ESC", () => this.exitToHub());
+
+    // contrôles tactiles (téléphones / tablettes)
+    if (this.game.device.input.touch) {
+      this.createTouchControls();
+    }
 
     // HUD
     this.registry.set("hud.coins", this.coinCount);
@@ -293,13 +305,18 @@ export class GameScene extends Phaser.Scene {
     }
 
     const left =
-      this.cursors.left.isDown || this.keys.A.isDown || this.keys.Q.isDown;
-    const right = this.cursors.right.isDown || this.keys.D.isDown;
+      this.cursors.left.isDown ||
+      this.keys.A.isDown ||
+      this.keys.Q.isDown ||
+      this.touchLeft;
+    const right =
+      this.cursors.right.isDown || this.keys.D.isDown || this.touchRight;
     const jumpHeld =
       this.cursors.up.isDown ||
       this.cursors.space.isDown ||
       this.keys.W.isDown ||
-      this.keys.Z.isDown;
+      this.keys.Z.isDown ||
+      this.touchJumpHeld;
     const onGround = body.blocked.down;
     if (onGround) {
       this.lastGrounded = time;
@@ -487,6 +504,104 @@ export class GameScene extends Phaser.Scene {
         this.exitToHub();
       }
     });
+  }
+
+  /**
+   * Boutons tactiles fixés à la caméra (déplacement, saut, recommencer, menu).
+   * Le canvas est mis à l'échelle en mode FIT, donc ces boutons suivent le jeu.
+   */
+  private createTouchControls(): void {
+    // plusieurs doigts simultanés (ex. avancer + sauter)
+    this.input.addPointer(2);
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const IDLE = 0.16;
+    const ACTIVE = 0.38;
+
+    const makeButton = (
+      x: number,
+      y: number,
+      radius: number,
+      label: string,
+      fontSize: number
+    ): { circle: Phaser.GameObjects.Arc; zone: Phaser.GameObjects.Zone } => {
+      const circle = this.add
+        .circle(x, y, radius, 0xffffff, IDLE)
+        .setScrollFactor(0)
+        .setDepth(1000)
+        .setStrokeStyle(3, 0xffffff, 0.45);
+      this.add
+        .text(x, y, label, {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: `${fontSize}px`,
+          color: "#ffffff",
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(1001);
+      const zone = this.add
+        .zone(x, y, radius * 2, radius * 2)
+        .setScrollFactor(0)
+        .setDepth(1002)
+        .setInteractive();
+      return { circle, zone };
+    };
+
+    const press = (c: Phaser.GameObjects.Arc) => c.setFillStyle(0xffffff, ACTIVE);
+    const release = (c: Phaser.GameObjects.Arc) => c.setFillStyle(0xffffff, IDLE);
+
+    // déplacement (bas-gauche)
+    const leftBtn = makeButton(86, h - 78, 52, "◀", 38);
+    leftBtn.zone.on("pointerdown", () => {
+      this.touchLeft = true;
+      press(leftBtn.circle);
+    });
+    const stopLeft = () => {
+      this.touchLeft = false;
+      release(leftBtn.circle);
+    };
+    leftBtn.zone.on("pointerup", stopLeft);
+    leftBtn.zone.on("pointerout", stopLeft);
+
+    const rightBtn = makeButton(210, h - 78, 52, "▶", 38);
+    rightBtn.zone.on("pointerdown", () => {
+      this.touchRight = true;
+      press(rightBtn.circle);
+    });
+    const stopRight = () => {
+      this.touchRight = false;
+      release(rightBtn.circle);
+    };
+    rightBtn.zone.on("pointerup", stopRight);
+    rightBtn.zone.on("pointerout", stopRight);
+
+    // saut (bas-droite)
+    const jumpBtn = makeButton(w - 92, h - 82, 62, "⤒", 44);
+    jumpBtn.zone.on("pointerdown", () => {
+      this.touchJumpHeld = true;
+      this.lastJumpPressed = this.time.now;
+      press(jumpBtn.circle);
+    });
+    const stopJump = () => {
+      this.touchJumpHeld = false;
+      release(jumpBtn.circle);
+    };
+    jumpBtn.zone.on("pointerup", stopJump);
+    jumpBtn.zone.on("pointerout", stopJump);
+
+    // recommencer + menu (bas-centre, plus discrets)
+    const restartBtn = makeButton(w / 2 - 42, h - 40, 24, "⟲", 22);
+    restartBtn.zone.on("pointerdown", () => {
+      this.scene.restart({
+        ...this.sceneData,
+        lives: 3,
+        coins: this.sceneData.coins ?? 0,
+      });
+    });
+
+    const exitBtn = makeButton(w / 2 + 42, h - 40, 24, "≡", 22);
+    exitBtn.zone.on("pointerdown", () => this.exitToHub());
   }
 
   private exitToHub(): void {
