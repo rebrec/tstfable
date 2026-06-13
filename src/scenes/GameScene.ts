@@ -590,8 +590,8 @@ export class GameScene extends Phaser.Scene {
     jumpBtn.zone.on("pointerup", stopJump);
     jumpBtn.zone.on("pointerout", stopJump);
 
-    // recommencer + menu (bas-centre, plus discrets)
-    const restartBtn = makeButton(w / 2 - 42, h - 40, 24, "⟲", 22);
+    // recommencer + plein écran + menu (bas-centre, plus discrets)
+    const restartBtn = makeButton(w / 2 - 72, h - 40, 24, "⟲", 22);
     restartBtn.zone.on("pointerdown", () => {
       this.scene.restart({
         ...this.sceneData,
@@ -600,7 +600,12 @@ export class GameScene extends Phaser.Scene {
       });
     });
 
-    const exitBtn = makeButton(w / 2 + 42, h - 40, 24, "≡", 22);
+    if (this.sys.game.device.fullscreen.available) {
+      const fsBtn = makeButton(w / 2, h - 40, 24, "⛶", 20);
+      fsBtn.zone.on("pointerdown", () => this.scale.toggleFullscreen());
+    }
+
+    const exitBtn = makeButton(w / 2 + 72, h - 40, 24, "≡", 22);
     exitBtn.zone.on("pointerdown", () => this.exitToHub());
   }
 

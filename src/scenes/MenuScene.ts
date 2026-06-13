@@ -10,6 +10,7 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
     addParallaxBackground(this);
+    this.setupFullscreen(width);
 
     // sol décoratif
     for (let x = 16; x < width; x += 32) {
@@ -171,5 +172,36 @@ export class MenuScene extends Phaser.Scene {
         }
       )
       .setOrigin(0.5);
+  }
+
+  /**
+   * Bouton plein écran (utile surtout sur mobile : masque la barre d'URL du
+   * navigateur et remplit tout l'écran). Sur tactile, on tente aussi le passage
+   * automatique en plein écran au premier appui (geste utilisateur requis).
+   */
+  private setupFullscreen(width: number): void {
+    if (!this.sys.game.device.fullscreen.available) return;
+
+    const btn = makeButton(
+      this,
+      width - 40,
+      30,
+      this.scale.isFullscreen ? "🗗" : "⛶",
+      () => this.scale.toggleFullscreen(),
+      { width: 44, fontSize: 22 }
+    );
+    btn.setDepth(100);
+
+    if (this.game.device.input.touch) {
+      this.input.once("pointerdown", () => {
+        if (!this.scale.isFullscreen) {
+          try {
+            this.scale.startFullscreen();
+          } catch {
+            /* certains navigateurs (iOS) ne le permettent pas : ignoré */
+          }
+        }
+      });
+    }
   }
 }

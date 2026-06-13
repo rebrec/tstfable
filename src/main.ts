@@ -8,10 +8,18 @@ import { EditorScene } from "./scenes/EditorScene";
 // Le jeu est conçu pour une hauteur fixe ; la largeur s'adapte au format de
 // l'écran (en paysage) pour remplir l'affichage sans bandes noires, aussi bien
 // sur mobile que sur desktop. Scale.FIT met ensuite le tout à l'échelle.
+//
+// Sur mobile, on se base sur les dimensions de l'écran (screen.*), stables et
+// indépendantes de la barre d'URL, pour que le format colle à l'écran réel —
+// notamment en plein écran. Sur desktop, on suit le format de la fenêtre.
 const DESIGN_HEIGHT = 540;
-const longSide = Math.max(window.innerWidth, window.innerHeight);
-const shortSide = Math.max(1, Math.min(window.innerWidth, window.innerHeight));
-const aspect = Phaser.Math.Clamp(longSide / shortSide, 1.3, 2.4);
+const isTouch =
+  "ontouchstart" in window || navigator.maxTouchPoints > 0;
+const refW = isTouch ? window.screen.width : window.innerWidth;
+const refH = isTouch ? window.screen.height : window.innerHeight;
+const longSide = Math.max(refW, refH);
+const shortSide = Math.max(1, Math.min(refW, refH));
+const aspect = Phaser.Math.Clamp(longSide / shortSide, 1.2, 2.6);
 const DESIGN_WIDTH = Math.round(DESIGN_HEIGHT * aspect);
 
 const game = new Phaser.Game({
